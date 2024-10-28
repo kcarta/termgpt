@@ -1,0 +1,46 @@
+#!/usr/bin/env ruby
+require('clipboard')
+require('openai')
+
+# Takes text from the user, sends it to ChatGPT, and copies the resulting command to the clipboard.
+# 1: Take user input from argv
+# 2: Pass the input to GPT-4
+# 3: Clean up the response if needed
+# 4: Copy the command to the clipboard
+# 5: Print the command to the user
+
+# 1: Take the input from the user from argv
+input = ARGV.join(' ')
+
+# 2: Pass the input to GPT-4
+OpenAI.configure do |config|
+  config.access_token = ENV.fetch('OPENAI_API_KEY')
+end
+
+system_prompt = 'You are a program that generates a valid MacOS terminal command based on what the user is asking for. Your command will be copied to the users clipboard and run directly, so do not include any other information in your response.'
+
+client = OpenAI::Client.new
+
+response = client.chat(
+  parameters: {
+    model: 'gpt-4',
+    messages: [
+      {
+        role: 'system',
+        content: system_prompt
+      },
+      {
+        role: 'user',
+        content: input
+      }
+    ]
+  }
+)
+command = response.dig('choices', 0, 'message', 'content')
+
+# If the command is wrapped in backticks, remove them
+command = command.split('`')[1] if command.include?('`')
+
+Clipboard.copy(command)
+
+puts(command)
